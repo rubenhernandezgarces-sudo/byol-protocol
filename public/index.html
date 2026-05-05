@@ -1,0 +1,1161 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#050510" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>BYOL Protocol</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=JetBrains+Mono:wght@400;600;700&family=Outfit:wght@300;400;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #050510;
+      --surface: #0c0c1e;
+      --surface2: #12122a;
+      --border: #1e1e42;
+      --green: #00ff88;
+      --cyan: #00d4ff;
+      --orange: #ff6b00;
+      --red: #ff3355;
+      --purple: #7c3aed;
+      --yellow: #ffd60a;
+      --text: #e8e8f0;
+      --muted: #555570;
+      --font-display: 'Syne', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+      --font-body: 'Outfit', sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--font-body); overflow: hidden; }
+    #app { height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+    /* ── ANIMATIONS ── */
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes streak-glow { 0%,100% { box-shadow: 0 0 20px rgba(255,107,0,0.3); } 50% { box-shadow: 0 0 40px rgba(255,107,0,0.7); } }
+    @keyframes celebrate { 0% { transform: scale(1); } 50% { transform: scale(1.15); } 100% { transform: scale(1); } }
+    @keyframes slide-in { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+
+    /* ── SCREENS ── */
+    .screen { display: none; flex-direction: column; flex: 1; overflow-y: auto; overflow-x: hidden; padding-bottom: 80px; }
+    .screen.active { display: flex; animation: fadeUp 0.3s ease; }
+
+    /* ── LOGIN SCREEN ── */
+    #screen-login { justify-content: center; align-items: center; padding: 40px 24px; background: radial-gradient(ellipse at 50% 0%, rgba(124,58,237,0.15) 0%, transparent 70%); }
+    .login-logo { text-align: center; margin-bottom: 48px; }
+    .login-logo h1 { font-family: var(--font-display); font-size: 42px; font-weight: 800; letter-spacing: -2px; color: white; }
+    .login-logo h1 span { color: var(--green); }
+    .login-logo p { color: var(--muted); font-size: 14px; font-family: var(--font-mono); letter-spacing: 2px; margin-top: 8px; }
+    .login-card { background: var(--surface); border: 1px solid var(--border); border-radius: 24px; padding: 32px 24px; width: 100%; max-width: 380px; }
+    .login-card h2 { font-family: var(--font-display); font-size: 22px; margin-bottom: 8px; }
+    .login-card p { color: var(--muted); font-size: 13px; margin-bottom: 28px; line-height: 1.6; }
+    .input-group { margin-bottom: 16px; }
+    .input-group label { display: block; color: var(--muted); font-family: var(--font-mono); font-size: 10px; letter-spacing: 2px; margin-bottom: 8px; }
+    .input-field { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; color: var(--text); font-family: var(--font-mono); font-size: 14px; transition: border-color 0.2s; }
+    .input-field:focus { outline: none; border-color: var(--green); }
+    .btn-primary { width: 100%; background: var(--green); color: var(--bg); border: none; border-radius: 14px; padding: 16px; font-family: var(--font-display); font-weight: 700; font-size: 16px; cursor: pointer; transition: transform 0.1s, opacity 0.2s; letter-spacing: 0.5px; }
+    .btn-primary:active { transform: scale(0.97); }
+    .btn-primary:disabled { opacity: 0.4; cursor: default; }
+    .btn-secondary { width: 100%; background: transparent; color: var(--muted); border: 1px solid var(--border); border-radius: 14px; padding: 14px; font-family: var(--font-mono); font-size: 13px; cursor: pointer; margin-top: 12px; transition: border-color 0.2s, color 0.2s; }
+    .btn-secondary:hover { border-color: var(--cyan); color: var(--cyan); }
+
+    /* ── HEADER ── */
+    .header { padding: 16px 20px 0; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+    .header-logo { font-family: var(--font-display); font-size: 20px; font-weight: 800; letter-spacing: -1px; }
+    .header-logo span { color: var(--green); }
+    .header-user { display: flex; align-items: center; gap: 8px; }
+    .avatar { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, var(--purple), var(--cyan)); display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-size: 14px; font-weight: 800; color: white; }
+
+    /* ── STREAK HERO ── */
+    .streak-hero { margin: 16px; background: linear-gradient(135deg, #1a0a00, #2a1200); border: 1px solid rgba(255,107,0,0.3); border-radius: 20px; padding: 20px; display: flex; align-items: center; gap: 16px; animation: streak-glow 3s ease-in-out infinite; }
+    .streak-number { font-family: var(--font-display); font-size: 64px; font-weight: 800; color: var(--orange); line-height: 1; }
+    .streak-info h3 { font-family: var(--font-display); font-size: 16px; color: var(--orange); }
+    .streak-info p { color: var(--muted); font-family: var(--font-mono); font-size: 11px; margin-top: 4px; }
+    .streak-flame { font-size: 40px; animation: celebrate 2s ease-in-out infinite; }
+
+    /* ── LEVEL BADGE ── */
+    .level-badge { margin: 0 16px 0; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 14px 18px; display: flex; justify-content: space-between; align-items: center; }
+    .level-left { display: flex; flex-direction: column; gap: 4px; }
+    .level-label { font-family: var(--font-mono); font-size: 9px; letter-spacing: 2px; color: var(--muted); }
+    .level-name { font-family: var(--font-display); font-size: 16px; font-weight: 700; }
+    .level-pts { font-family: var(--font-mono); font-size: 22px; font-weight: 700; }
+
+    /* ── CARDS ── */
+    .card { margin: 12px 16px 0; background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 18px; }
+    .card-title { font-family: var(--font-mono); font-size: 9px; letter-spacing: 2px; color: var(--muted); margin-bottom: 14px; }
+
+    /* ── CALORIE BAR ── */
+    .cal-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .cal-label { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+    .cal-value { font-family: var(--font-mono); font-size: 13px; font-weight: 700; }
+    .progress-track { height: 10px; background: var(--surface2); border-radius: 5px; overflow: hidden; }
+    .progress-fill { height: 100%; border-radius: 5px; transition: width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1); }
+    .progress-fill.ok { background: linear-gradient(90deg, var(--green), var(--cyan)); }
+    .progress-fill.over { background: linear-gradient(90deg, var(--orange), var(--red)); }
+    .cal-remaining { text-align: right; margin-top: 6px; font-family: var(--font-mono); font-size: 10px; color: var(--muted); }
+
+    /* ── MACRO RINGS ── */
+    .macros-grid { display: flex; justify-content: space-around; }
+    .macro-item { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+    .macro-label { font-family: var(--font-mono); font-size: 9px; letter-spacing: 1px; }
+    .macro-sub { font-family: var(--font-mono); font-size: 9px; color: var(--muted); }
+
+    /* ── MISSIONS ── */
+    .mission-item { background: var(--surface2); border-radius: 14px; padding: 14px; margin-bottom: 10px; display: flex; align-items: center; gap: 12px; }
+    .mission-icon { font-size: 24px; flex-shrink: 0; }
+    .mission-text { flex: 1; }
+    .mission-title { font-size: 13px; font-weight: 600; margin-bottom: 3px; }
+    .mission-desc { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+    .mission-check { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; flex-shrink: 0; }
+    .mission-check.done { background: var(--green); border-color: var(--green); }
+
+    /* ── MEALS LIST ── */
+    .meal-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border); }
+    .meal-item:last-child { border-bottom: none; }
+    .meal-name { font-size: 14px; font-weight: 600; margin-bottom: 3px; }
+    .meal-meta { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+    .meal-cal { font-family: var(--font-mono); font-size: 16px; font-weight: 700; color: var(--green); }
+    .meal-delete { background: none; border: none; color: var(--muted); cursor: pointer; padding: 4px; font-size: 16px; }
+
+    /* ── LOG SCREEN ── */
+    .photo-zone { margin: 16px; background: var(--surface); border: 2px dashed var(--border); border-radius: 24px; padding: 40px 20px; display: flex; flex-direction: column; align-items: center; gap: 16px; cursor: pointer; transition: border-color 0.2s, background 0.2s; }
+    .photo-zone:active { background: var(--surface2); border-color: var(--green); }
+    .photo-zone.analyzing { border-color: var(--cyan); animation: pulse 1s ease-in-out infinite; }
+    .photo-icon { font-size: 48px; }
+    .photo-title { font-family: var(--font-display); font-size: 20px; font-weight: 700; }
+    .photo-sub { font-family: var(--font-mono); font-size: 11px; color: var(--muted); text-align: center; letter-spacing: 1px; }
+    .analyzing-text { font-family: var(--font-mono); font-size: 13px; color: var(--cyan); animation: pulse 1s ease-in-out infinite; }
+
+    /* ── RESULT CARD ── */
+    .result-card { margin: 16px; background: var(--surface); border: 1px solid var(--green); border-radius: 24px; padding: 20px; animation: slide-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+    .result-meal-name { font-family: var(--font-display); font-size: 22px; font-weight: 700; margin-bottom: 16px; }
+    .result-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 18px; }
+    .result-macro { background: var(--surface2); border-radius: 14px; padding: 14px; }
+    .result-macro-label { font-family: var(--font-mono); font-size: 9px; letter-spacing: 2px; color: var(--muted); margin-bottom: 6px; }
+    .result-macro-value { font-family: var(--font-display); font-size: 26px; font-weight: 700; }
+    .result-macro-unit { font-size: 13px; font-weight: 400; color: var(--muted); }
+    .result-note { font-family: var(--font-mono); font-size: 11px; color: var(--muted); font-style: italic; margin-bottom: 16px; background: var(--surface2); padding: 10px 14px; border-radius: 10px; }
+    .result-actions { display: flex; gap: 10px; }
+    .btn-confirm { flex: 1; background: var(--green); color: var(--bg); border: none; border-radius: 14px; padding: 14px; font-family: var(--font-display); font-weight: 700; font-size: 15px; cursor: pointer; }
+    .btn-discard { flex: 1; background: transparent; color: var(--muted); border: 1px solid var(--border); border-radius: 14px; padding: 14px; font-family: var(--font-mono); font-size: 13px; cursor: pointer; }
+
+    /* ── HISTORY ── */
+    .chart-bars { display: flex; align-items: flex-end; gap: 6px; height: 80px; }
+    .chart-bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+    .chart-bar { width: 100%; border-radius: 4px 4px 0 0; transition: height 0.6s ease; }
+    .chart-date { font-family: var(--font-mono); font-size: 8px; color: var(--muted); }
+    .stat-row { display: flex; justify-content: space-around; }
+    .stat-item { text-align: center; }
+    .stat-value { font-family: var(--font-display); font-size: 28px; font-weight: 700; }
+    .stat-label { font-family: var(--font-mono); font-size: 9px; letter-spacing: 1px; color: var(--muted); margin-top: 4px; }
+    .history-entry { display: flex; justify-content: space-between; padding: 11px 0; border-bottom: 1px solid #111; }
+    .history-date { font-size: 13px; font-weight: 600; margin-bottom: 3px; }
+    .history-meta { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+    .history-cal { font-family: var(--font-mono); font-weight: 700; }
+
+    /* ── LEADERBOARD ── */
+    .lb-item { display: flex; align-items: center; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+    .lb-item:last-child { border-bottom: none; }
+    .lb-rank { font-family: var(--font-display); font-size: 20px; font-weight: 800; width: 32px; text-align: center; }
+    .lb-avatar { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-size: 16px; font-weight: 800; color: white; }
+    .lb-name { font-size: 14px; font-weight: 600; flex: 1; }
+    .lb-streak { font-family: var(--font-mono); font-size: 13px; font-weight: 700; color: var(--orange); }
+
+    /* ── BOTTOM NAV ── */
+    .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(12,12,30,0.95); backdrop-filter: blur(20px); border-top: 1px solid var(--border); display: flex; justify-content: space-around; padding: 10px 0 max(14px, env(safe-area-inset-bottom)); z-index: 100; }
+    .nav-btn { background: none; border: none; display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; padding: 4px 16px; color: var(--muted); transition: color 0.2s; }
+    .nav-btn.active { color: var(--green); }
+    .nav-btn svg { width: 22px; height: 22px; }
+    .nav-btn span { font-family: var(--font-mono); font-size: 9px; letter-spacing: 1px; }
+
+    /* ── TOAST ── */
+    .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); padding: 12px 24px; border-radius: 14px; font-family: var(--font-mono); font-size: 13px; z-index: 1000; white-space: nowrap; animation: fadeUp 0.3s ease; }
+    .toast.ok { background: rgba(0,255,136,0.15); border: 1px solid var(--green); color: var(--green); }
+    .toast.err { background: rgba(255,51,85,0.15); border: 1px solid var(--red); color: var(--red); }
+
+    /* ── MANUAL FORM ── */
+    .manual-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+    .btn-add { width: 100%; background: var(--surface2); color: var(--green); border: 1px solid var(--border); border-radius: 14px; padding: 13px; font-family: var(--font-mono); font-size: 13px; font-weight: 700; cursor: pointer; margin-top: 12px; }
+
+    /* ── REPORT ── */
+    .report-box { background: var(--surface2); border-radius: 14px; padding: 16px; margin-top: 14px; font-size: 13px; line-height: 1.8; color: #ccc; }
+    .btn-report { width: 100%; background: linear-gradient(135deg, var(--purple), #a855f7); color: white; border: none; border-radius: 14px; padding: 14px; font-family: var(--font-display); font-weight: 700; font-size: 15px; cursor: pointer; }
+
+    /* ── WEIGHT INPUT ── */
+    .weight-row { display: flex; align-items: center; gap: 12px; }
+    .weight-icon { font-size: 24px; }
+    .weight-input { flex: 1; background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 10px 14px; color: white; font-family: var(--font-mono); font-size: 16px; }
+    .weight-input:focus { outline: none; border-color: var(--cyan); }
+
+    /* ── CLOSE DAY BTN ── */
+    .close-day-btn { margin: 14px 16px 0; background: linear-gradient(135deg, var(--cyan), #0099cc); color: white; border: none; border-radius: 16px; padding: 16px; font-family: var(--font-display); font-weight: 700; font-size: 16px; cursor: pointer; width: calc(100% - 32px); display: flex; align-items: center; justify-content: center; gap: 8px; }
+
+    /* ── SCROLLBAR ── */
+    ::-webkit-scrollbar { width: 3px; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    .shimmer { background: linear-gradient(90deg, var(--surface) 25%, var(--surface2) 50%, var(--surface) 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <!-- LOGIN -->
+  <div id="screen-login" class="screen active">
+    <div class="login-logo">
+      <h1>BYOL<span>.</span></h1>
+      <p>BE YOUR OWN LAB</p>
+    </div>
+    <div class="login-card">
+      <h2>Bienvenido 👋</h2>
+      <p>Ingresa el código de acceso que te compartieron y tu nombre para comenzar.</p>
+      <div class="input-group">
+        <label>CÓDIGO DE ACCESO</label>
+        <input class="input-field" id="input-code" type="text" placeholder="BYOL-2024" autocapitalize="characters" />
+      </div>
+      <div class="input-group">
+        <label>TU NOMBRE</label>
+        <input class="input-field" id="input-name" type="text" placeholder="Ruben" />
+      </div>
+      <button class="btn-primary" id="btn-login">Entrar al Protocolo →</button>
+    </div>
+  </div>
+
+  <!-- HOME -->
+  <div id="screen-home" class="screen">
+    <div class="header">
+      <div class="header-logo">BYOL<span>.</span></div>
+      <div class="header-user">
+        <div class="avatar" id="home-avatar">R</div>
+      </div>
+    </div>
+
+    <div class="streak-hero" id="streak-hero">
+      <div class="streak-flame">🔥</div>
+      <div>
+        <div class="streak-number" id="streak-num">0</div>
+        <div class="streak-info">
+          <h3>días de racha</h3>
+          <p id="streak-sub">Cierra tu primer día para comenzar</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="level-badge" id="level-badge">
+      <div class="level-left">
+        <div class="level-label">NIVEL BYOL PROTOCOL</div>
+        <div class="level-name" id="level-name">🔴 Muestra en proceso</div>
+      </div>
+      <div>
+        <div style="font-family:var(--font-mono);font-size:9px;color:var(--muted);text-align:right">PUNTOS</div>
+        <div class="level-pts" id="level-pts" style="color:var(--red)">0</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">CALORÍAS HOY</div>
+      <div class="cal-row">
+        <span class="cal-label">Consumidas</span>
+        <span class="cal-value" id="cal-consumed" style="color:var(--green)">0</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill ok" id="cal-bar" style="width:0%"></div>
+      </div>
+      <div class="cal-remaining" id="cal-remaining">0 kcal restantes</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">MACROS HOY</div>
+      <div class="macros-grid">
+        <div class="macro-item">
+          <svg width="72" height="72" viewBox="0 0 72 72">
+            <circle cx="36" cy="36" r="30" fill="none" stroke="#1e1e42" stroke-width="7"/>
+            <circle id="ring-protein" cx="36" cy="36" r="30" fill="none" stroke="var(--green)" stroke-width="7" stroke-linecap="round" stroke-dasharray="0 188.5" transform="rotate(-90 36 36)" style="transition:stroke-dasharray 0.8s ease"/>
+            <text x="36" y="40" text-anchor="middle" fill="white" font-size="14" font-family="'JetBrains Mono'" font-weight="700" id="ring-protein-val">0</text>
+          </svg>
+          <div class="macro-label" style="color:var(--green)">PROTEÍNA</div>
+          <div class="macro-sub" id="goal-protein-label">/150g</div>
+        </div>
+        <div class="macro-item">
+          <svg width="72" height="72" viewBox="0 0 72 72">
+            <circle cx="36" cy="36" r="30" fill="none" stroke="#1e1e42" stroke-width="7"/>
+            <circle id="ring-carbs" cx="36" cy="36" r="30" fill="none" stroke="var(--cyan)" stroke-width="7" stroke-linecap="round" stroke-dasharray="0 188.5" transform="rotate(-90 36 36)" style="transition:stroke-dasharray 0.8s ease"/>
+            <text x="36" y="40" text-anchor="middle" fill="white" font-size="14" font-family="'JetBrains Mono'" font-weight="700" id="ring-carbs-val">0</text>
+          </svg>
+          <div class="macro-label" style="color:var(--cyan)">CARBS</div>
+          <div class="macro-sub" id="goal-carbs-label">/150g</div>
+        </div>
+        <div class="macro-item">
+          <svg width="72" height="72" viewBox="0 0 72 72">
+            <circle cx="36" cy="36" r="30" fill="none" stroke="#1e1e42" stroke-width="7"/>
+            <circle id="ring-fat" cx="36" cy="36" r="30" fill="none" stroke="var(--orange)" stroke-width="7" stroke-linecap="round" stroke-dasharray="0 188.5" transform="rotate(-90 36 36)" style="transition:stroke-dasharray 0.8s ease"/>
+            <text x="36" y="40" text-anchor="middle" fill="white" font-size="14" font-family="'JetBrains Mono'" font-weight="700" id="ring-fat-val">0</text>
+          </svg>
+          <div class="macro-label" style="color:var(--orange)">GRASA</div>
+          <div class="macro-sub" id="goal-fat-label">/60g</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MISSIONS -->
+    <div class="card">
+      <div class="card-title">MISIONES SEMANALES</div>
+      <div id="missions-list">
+        <div class="mission-item">
+          <div class="mission-icon">🎯</div>
+          <div class="mission-text">
+            <div class="mission-title">Cierra tu primer día</div>
+            <div class="mission-desc">Registra comidas y cierra el día</div>
+          </div>
+          <div class="mission-check" id="mission-0">✓</div>
+        </div>
+        <div class="mission-item">
+          <div class="mission-icon">💪</div>
+          <div class="mission-text">
+            <div class="mission-title">Alcanza tu meta de proteína</div>
+            <div class="mission-desc">Llega al 90% de tu meta diaria</div>
+          </div>
+          <div class="mission-check" id="mission-1"></div>
+        </div>
+        <div class="mission-item">
+          <div class="mission-icon">🔥</div>
+          <div class="mission-text">
+            <div class="mission-title">3 días seguidos</div>
+            <div class="mission-desc">Mantén la racha por 3 días</div>
+          </div>
+          <div class="mission-check" id="mission-2"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TODAY'S MEALS -->
+    <div class="card">
+      <div class="card-title">COMIDAS HOY (<span id="meals-count">0</span>)</div>
+      <div id="meals-list">
+        <div style="color:var(--muted);font-size:13px;text-align:center;padding:16px 0;font-family:var(--font-mono)">
+          Sin comidas — ve a LOG 📸
+        </div>
+      </div>
+    </div>
+
+    <!-- WEIGHT -->
+    <div class="card">
+      <div class="card-title">PESO HOY</div>
+      <div class="weight-row">
+        <div class="weight-icon">⚖️</div>
+        <input class="weight-input" id="weight-input" type="number" step="0.1" placeholder="70.5 kg" />
+      </div>
+    </div>
+
+    <button class="close-day-btn" id="close-day-btn" style="display:none">
+      ✓ Cerrar Día
+    </button>
+  </div>
+
+  <!-- LOG -->
+  <div id="screen-log" class="screen">
+    <div class="header">
+      <div class="header-logo">Registrar <span>Comida</span></div>
+    </div>
+
+    <div id="result-area"></div>
+
+    <div class="photo-zone" id="photo-zone">
+      <div class="photo-icon" id="photo-icon">📸</div>
+      <div class="photo-title" id="photo-title">Toma una foto</div>
+      <div class="photo-sub" id="photo-sub">Claude analiza calorías y macros<br>automáticamente</div>
+      <div class="analyzing-text" id="analyzing-text" style="display:none">Analizando tu comida...</div>
+    </div>
+    <input type="file" id="file-input" accept="image/*" capture="environment" style="display:none" />
+
+    <!-- MANUAL -->
+    <div class="card" id="manual-card">
+      <div class="card-title">O INGRESA MANUALMENTE</div>
+      <div class="input-group">
+        <label>NOMBRE DE LA COMIDA</label>
+        <input class="input-field" id="manual-name" placeholder="ej. Arroz con pollo" />
+      </div>
+      <div class="manual-grid">
+        <div class="input-group">
+          <label>CALORÍAS</label>
+          <input class="input-field" id="manual-cal" type="number" placeholder="450" />
+        </div>
+        <div class="input-group">
+          <label>PROTEÍNA (g)</label>
+          <input class="input-field" id="manual-prot" type="number" placeholder="35" />
+        </div>
+        <div class="input-group">
+          <label>CARBS (g)</label>
+          <input class="input-field" id="manual-carbs" type="number" placeholder="50" />
+        </div>
+        <div class="input-group">
+          <label>GRASA (g)</label>
+          <input class="input-field" id="manual-fat" type="number" placeholder="12" />
+        </div>
+      </div>
+      <button class="btn-add" id="btn-manual-add">+ Añadir manualmente</button>
+    </div>
+  </div>
+
+  <!-- HISTORY -->
+  <div id="screen-history" class="screen">
+    <div class="header">
+      <div class="header-logo">Mi <span>Progreso</span></div>
+    </div>
+
+    <!-- WEIGHT JOURNEY -->
+    <div class="card">
+      <div class="card-title">RECORRIDO DE PESO</div>
+      <div id="weight-journey-area">
+        <div style="color:var(--muted);font-size:12px;font-family:var(--font-mono);text-align:center;padding:12px 0">Registra tu peso diario para ver el recorrido</div>
+      </div>
+    </div>
+
+    <!-- KGs TO GOAL -->
+    <div class="card" id="goal-distance-card" style="display:none">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div>
+          <div class="card-title" style="margin-bottom:4px">TE FALTAN</div>
+          <div style="font-family:var(--font-display);font-size:38px;font-weight:800;color:var(--green);line-height:1" id="kg-remaining">—</div>
+          <div style="font-family:var(--font-mono);font-size:11px;color:var(--muted);margin-top:4px" id="kg-lost-label">—</div>
+        </div>
+        <div style="text-align:right">
+          <div style="background:rgba(0,255,136,0.12);border:1px solid rgba(0,255,136,0.25);border-radius:10px;padding:8px 12px;font-family:var(--font-mono);font-size:12px;color:var(--green);font-weight:700" id="trend-badge">—</div>
+        </div>
+      </div>
+      <!-- Projection -->
+      <div style="background:var(--surface2);border-radius:12px;padding:12px;margin-top:4px">
+        <div class="card-title" style="margin-bottom:8px">PROYECCIÓN</div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div style="display:flex;justify-content:space-between">
+            <span style="font-family:var(--font-mono);font-size:11px;color:var(--muted)">Ritmo actual</span>
+            <span style="font-family:var(--font-mono);font-size:11px;font-weight:700;color:var(--text)" id="proj-rate">—</span>
+          </div>
+          <div style="display:flex;justify-content:space-between">
+            <span style="font-family:var(--font-mono);font-size:11px;color:var(--muted)">Semanas restantes</span>
+            <span style="font-family:var(--font-mono);font-size:11px;font-weight:700;color:var(--green)" id="proj-weeks">—</span>
+          </div>
+          <div style="display:flex;justify-content:space-between">
+            <span style="font-family:var(--font-mono);font-size:11px;color:var(--muted)">Fecha estimada</span>
+            <span style="font-family:var(--font-mono);font-size:11px;font-weight:700;color:var(--cyan)" id="proj-date">—</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CALORIES CHART -->
+    <div class="card">
+      <div class="card-title">CALORÍAS ÚLTIMOS 7 DÍAS</div>
+      <div class="chart-bars" id="chart-bars">
+        <div style="color:var(--muted);font-size:12px;font-family:var(--font-mono);text-align:center;width:100%">Sin datos aún</div>
+      </div>
+    </div>
+
+    <!-- AVERAGES -->
+    <div class="card">
+      <div class="card-title">PROMEDIOS 7 DÍAS</div>
+      <div class="stat-row">
+        <div class="stat-item">
+          <div class="stat-value" id="avg-cal" style="color:var(--cyan)">—</div>
+          <div class="stat-label">CALORÍAS</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value" id="avg-prot" style="color:var(--green)">—</div>
+          <div class="stat-label">PROTEÍNA</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value" id="avg-weight" style="color:var(--orange)">—</div>
+          <div class="stat-label">PESO kg</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONSISTENCY GRID -->
+    <div class="card">
+      <div class="card-title">CONSISTENCIA — DÍAS REGISTRADOS</div>
+      <div id="consistency-grid" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px"></div>
+      <div style="font-family:var(--font-mono);font-size:11px;color:var(--green);font-weight:700" id="consistency-label">—</div>
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);margin-top:3px" id="best-streak-label">—</div>
+    </div>
+
+    <!-- PROTEIN DAYS THIS WEEK -->
+    <div class="card" style="background:linear-gradient(135deg,#0a0820,#100a28);border-color:rgba(0,212,255,0.2)">
+      <div class="card-title" style="color:var(--cyan)">META PROTEÍNA · ESTA SEMANA</div>
+      <div id="protein-days" style="display:flex;gap:6px;margin:10px 0"></div>
+      <div style="font-family:var(--font-mono);font-size:11px;color:var(--cyan);font-weight:700" id="protein-week-label">—</div>
+    </div>
+
+    <!-- NEXT LEVEL -->
+    <div class="card" id="next-level-card" style="background:linear-gradient(135deg,#0a0820,#14083a);border-color:rgba(124,58,237,0.3)">
+      <div class="card-title" style="color:var(--purple)">PRÓXIMO NIVEL</div>
+      <div style="font-family:var(--font-display);font-size:18px;font-weight:700;color:white;margin-bottom:4px" id="next-level-name">—</div>
+      <div style="font-family:var(--font-mono);font-size:11px;color:var(--purple);margin-bottom:10px" id="next-level-pts">—</div>
+      <div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden">
+        <div style="height:100%;background:linear-gradient(90deg,var(--purple),#a855f7);border-radius:3px;transition:width 0.8s ease" id="next-level-bar"></div>
+      </div>
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);margin-top:4px;text-align:right" id="next-level-frac">—</div>
+    </div>
+
+    <!-- AI REPORT -->
+    <div class="card">
+      <div class="card-title">REPORTE IA</div>
+      <button class="btn-report" id="btn-report">⚡ Generar Reporte Semanal</button>
+      <div id="report-box" style="display:none" class="report-box"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">REGISTRO (<span id="entries-count">0</span> días)</div>
+      <div id="entries-list">
+        <div style="color:var(--muted);font-size:12px;font-family:var(--font-mono);text-align:center;padding:16px 0">Cierra tu primer día para ver el historial</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div id="screen-settings" class="screen">
+    <div class="header">
+      <div class="header-logo">Configuración</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">METAS DIARIAS</div>
+      <div class="input-group" style="margin-top:4px">
+        <label>CALORÍAS (kcal)</label>
+        <input class="input-field" id="goal-cal" type="number" value="1800" />
+      </div>
+      <div class="input-group">
+        <label>PROTEÍNA (g)</label>
+        <input class="input-field" id="goal-prot" type="number" value="150" />
+      </div>
+      <div class="input-group">
+        <label>CARBS (g)</label>
+        <input class="input-field" id="goal-carbs" type="number" value="150" />
+      </div>
+      <div class="input-group">
+        <label>GRASA (g)</label>
+        <input class="input-field" id="goal-fat" type="number" value="60" />
+      </div>
+      <button class="btn-primary" id="btn-save-goals" style="margin-top:4px">Guardar Metas</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">SESIÓN</div>
+      <div style="margin-bottom:14px">
+        <div style="font-family:var(--font-mono);font-size:11px;color:var(--muted);margin-bottom:4px">USUARIO</div>
+        <div style="font-size:16px;font-weight:600" id="settings-username">—</div>
+      </div>
+      <button class="btn-secondary" id="btn-logout">Cerrar sesión</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">COMPARTIR BYOL</div>
+      <div style="background:var(--surface2);border-radius:14px;padding:16px;margin-bottom:14px">
+        <div style="font-family:var(--font-mono);font-size:11px;color:var(--muted);margin-bottom:8px">CÓDIGO DE ACCESO</div>
+        <div style="font-family:var(--font-display);font-size:24px;font-weight:800;color:var(--green);letter-spacing:2px" id="share-code">BYOL-2024</div>
+        <div style="font-family:var(--font-mono);font-size:11px;color:var(--muted);margin-top:8px">Comparte este código con tus amigos</div>
+      </div>
+      <button class="btn-secondary" id="btn-copy-link">📋 Copiar enlace de invitación</button>
+    </div>
+  </div>
+
+  <!-- BOTTOM NAV -->
+  <nav class="bottom-nav" id="bottom-nav" style="display:none">
+    <button class="nav-btn active" data-screen="home">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      <span>HOY</span>
+    </button>
+    <button class="nav-btn" data-screen="log">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+      <span>LOG</span>
+    </button>
+    <button class="nav-btn" data-screen="history">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      <span>STATS</span>
+    </button>
+    <button class="nav-btn" data-screen="settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      <span>CONFIG</span>
+    </button>
+  </nav>
+</div>
+
+<script>
+// ── STATE ──────────────────────────────────────────────────────────────────────
+const ACCESS_CODES = ['BYOL-2024', 'BYOL2024', 'PROTOCOLO', 'CONECTALAB'];
+const LS = {
+  get: (k, d) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
+  set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+};
+
+let state = {
+  user: LS.get('byol_user', null),
+  goals: LS.get('byol_goals', { calories: 1800, protein: 150, carbs: 150, fat: 60 }),
+  todayMeals: LS.get('byol_today_' + today(), []),
+  entries: LS.get('byol_entries', []),
+  pendingMeal: null,
+};
+
+function today() { return new Date().toISOString().split('T')[0]; }
+
+function totals() {
+  return state.todayMeals.reduce((a, m) => ({
+    calories: a.calories + (m.calories || 0),
+    protein: a.protein + (m.protein || 0),
+    carbs: a.carbs + (m.carbs || 0),
+    fat: a.fat + (m.fat || 0),
+  }), { calories: 0, protein: 0, carbs: 0, fat: 0 });
+}
+
+function calcStreak() {
+  if (!state.entries.length) return 0;
+  const sorted = [...state.entries].sort((a, b) => b.date.localeCompare(a.date));
+  let streak = 0;
+  let d = new Date(); d.setHours(0,0,0,0);
+  for (const e of sorted) {
+    const ed = new Date(e.date + 'T00:00:00');
+    const diff = Math.round((d - ed) / 86400000);
+    if (diff <= 1) { streak++; d = ed; } else break;
+  }
+  return streak;
+}
+
+function calcLevel(streak, entries) {
+  const last7 = entries.slice(-7);
+  const proteinDays = last7.filter(e => e.protein >= state.goals.protein * 0.9).length;
+  const pts = Math.min(streak * 2, 20) + proteinDays;
+  if (pts >= 27) return { name: '⚡ BYOL Master', color: '#a855f7', pts };
+  if (pts >= 20) return { name: '🔵 Optimización avanzada', color: '#00d4ff', pts };
+  if (pts >= 13) return { name: '🟢 Protocolo activo', color: '#00ff88', pts };
+  if (pts >= 6)  return { name: '🟡 Datos estables', color: '#ffd60a', pts };
+  return { name: '🔴 Muestra en proceso', color: '#ff3355', pts };
+}
+
+// ── TOAST ──────────────────────────────────────────────────────────────────────
+let toastTimer;
+function showToast(msg, type = 'ok') {
+  clearTimeout(toastTimer);
+  const existing = document.querySelector('.toast');
+  if (existing) existing.remove();
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.textContent = msg;
+  document.body.appendChild(t);
+  toastTimer = setTimeout(() => t.remove(), 3000);
+}
+
+// ── NAVIGATION ────────────────────────────────────────────────────────────────
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.screen === name);
+  });
+  if (name === 'home') renderHome();
+  if (name === 'history') renderHistory();
+  if (name === 'settings') renderSettings();
+}
+
+// ── LOGIN ─────────────────────────────────────────────────────────────────────
+document.getElementById('btn-login').onclick = () => {
+  const code = document.getElementById('input-code').value.trim().toUpperCase();
+  const name = document.getElementById('input-name').value.trim();
+  if (!ACCESS_CODES.includes(code)) { showToast('Código incorrecto', 'err'); return; }
+  if (!name) { showToast('Ingresa tu nombre', 'err'); return; }
+  state.user = { name, code, joined: today() };
+  LS.set('byol_user', state.user);
+  initApp();
+};
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+function initApp() {
+  if (!state.user) { showScreen('login'); return; }
+  document.getElementById('bottom-nav').style.display = 'flex';
+  document.getElementById('screen-login').style.display = 'none';
+  document.querySelectorAll('.nav-btn').forEach(btn => {
+    btn.onclick = () => showScreen(btn.dataset.screen);
+  });
+  setupLog();
+  setupHome();
+  showScreen('home');
+}
+
+// ── HOME ──────────────────────────────────────────────────────────────────────
+function setupHome() {
+  document.getElementById('close-day-btn').onclick = closeDay;
+  document.getElementById('weight-input').onchange = e => {
+    state.goals._weight = e.target.value;
+  };
+}
+
+function renderHome() {
+  // Avatar
+  document.getElementById('home-avatar').textContent = state.user.name[0].toUpperCase();
+
+  // Streak
+  const streak = calcStreak();
+  document.getElementById('streak-num').textContent = streak;
+  document.getElementById('streak-sub').textContent = streak >= 3 ? '¡Vas muy bien, no pares!' : streak === 0 ? 'Cierra tu primer día para comenzar' : '¡Sigue así!';
+
+  // Level
+  const level = calcLevel(streak, state.entries);
+  document.getElementById('level-name').textContent = level.name;
+  document.getElementById('level-name').style.color = level.color;
+  document.getElementById('level-pts').textContent = level.pts;
+  document.getElementById('level-pts').style.color = level.color;
+
+  // Calories
+  const t = totals();
+  const g = state.goals;
+  const calPct = Math.min((t.calories / (g.calories || 1)) * 100, 100);
+  const over = t.calories > g.calories;
+  document.getElementById('cal-consumed').textContent = t.calories + ' kcal';
+  document.getElementById('cal-consumed').style.color = over ? 'var(--red)' : 'var(--green)';
+  const bar = document.getElementById('cal-bar');
+  bar.style.width = calPct + '%';
+  bar.className = 'progress-fill ' + (over ? 'over' : 'ok');
+  document.getElementById('cal-remaining').textContent = over
+    ? `+${t.calories - g.calories} sobre la meta`
+    : `${g.calories - t.calories} kcal restantes`;
+
+  // Rings
+  const circ = 188.5;
+  [['protein', g.protein, t.protein], ['carbs', g.carbs, t.carbs], ['fat', g.fat, t.fat]].forEach(([k, goal, val]) => {
+    const pct = Math.min(val / (goal || 1), 1);
+    const dash = pct * circ;
+    document.getElementById('ring-' + k).setAttribute('stroke-dasharray', `${dash} ${circ - dash}`);
+    document.getElementById('ring-' + k + '-val').textContent = Math.round(val);
+  });
+  document.getElementById('goal-protein-label').textContent = '/' + g.protein + 'g';
+  document.getElementById('goal-carbs-label').textContent = '/' + g.carbs + 'g';
+  document.getElementById('goal-fat-label').textContent = '/' + g.fat + 'g';
+
+  // Missions check
+  const m0 = state.entries.length > 0;
+  const m1 = t.protein >= g.protein * 0.9;
+  const m2 = streak >= 3;
+  [m0, m1, m2].forEach((done, i) => {
+    const el = document.getElementById('mission-' + i);
+    if (el) { el.textContent = done ? '✓' : ''; el.className = 'mission-check' + (done ? ' done' : ''); }
+  });
+
+  // Meals
+  const list = document.getElementById('meals-list');
+  document.getElementById('meals-count').textContent = state.todayMeals.length;
+  if (!state.todayMeals.length) {
+    list.innerHTML = '<div style="color:var(--muted);font-size:13px;text-align:center;padding:16px 0;font-family:var(--font-mono)">Sin comidas — ve a LOG 📸</div>';
+  } else {
+    list.innerHTML = state.todayMeals.map((m, i) => `
+      <div class="meal-item">
+        <div>
+          <div class="meal-name">${m.meal}</div>
+          <div class="meal-meta">${m.time} · P:${m.protein}g C:${m.carbs}g G:${m.fat}g</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span class="meal-cal">${m.calories}</span>
+          <button class="meal-delete" onclick="deleteMeal(${i})">🗑</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // Close day btn
+  document.getElementById('close-day-btn').style.display = state.todayMeals.length ? 'flex' : 'none';
+}
+
+function deleteMeal(i) {
+  state.todayMeals.splice(i, 1);
+  LS.set('byol_today_' + today(), state.todayMeals);
+  renderHome();
+}
+window.deleteMeal = deleteMeal;
+
+function closeDay() {
+  if (!state.todayMeals.length) { showToast('Sin comidas para cerrar', 'err'); return; }
+  const t = totals();
+  const entry = {
+    date: today(), ...t, meals: state.todayMeals.length,
+    weight: document.getElementById('weight-input').value || '',
+    user: state.user.name,
+  };
+  state.entries = [...state.entries.filter(e => e.date !== today()), entry].sort((a,b) => a.date.localeCompare(b.date));
+  LS.set('byol_entries', state.entries);
+  state.todayMeals = [];
+  LS.set('byol_today_' + today(), []);
+  showToast('🔥 ¡Día cerrado! Racha actualizada');
+  renderHome();
+}
+
+// ── LOG ───────────────────────────────────────────────────────────────────────
+function setupLog() {
+  document.getElementById('photo-zone').onclick = () => document.getElementById('file-input').click();
+  document.getElementById('file-input').onchange = handlePhoto;
+  document.getElementById('btn-manual-add').onclick = addManual;
+}
+
+async function handlePhoto(e) {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  const zone = document.getElementById('photo-zone');
+  zone.classList.add('analyzing');
+  document.getElementById('photo-title').textContent = 'Analizando...';
+  document.getElementById('photo-sub').style.display = 'none';
+  document.getElementById('analyzing-text').style.display = 'block';
+  document.getElementById('manual-card').style.display = 'none';
+
+  try {
+    const b64 = await fileToBase64(file);
+    const result = await analyzeWithAI(b64, file.type);
+    state.pendingMeal = { ...result, id: Date.now(), time: new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }) };
+    showResult(result);
+  } catch (err) {
+    showToast('Error: ' + err.message, 'err');
+    resetPhotoZone();
+  }
+  e.target.value = '';
+}
+
+function fileToBase64(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = ev => res(ev.target.result.split(',')[1]);
+    r.onerror = () => rej(new Error('Error leyendo archivo'));
+    r.readAsDataURL(file);
+  });
+}
+
+async function analyzeWithAI(b64, mime) {
+  const res = await fetch('/api/analyze', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ image: b64, mimeType: mime }),
+  });
+  if (!res.ok) throw new Error('Error del servidor: ' + res.status);
+  return res.json();
+}
+
+function showResult(meal) {
+  resetPhotoZone();
+  document.getElementById('result-area').innerHTML = `
+    <div class="result-card">
+      <div class="result-meal-name">${meal.meal}</div>
+      <div class="result-grid">
+        <div class="result-macro">
+          <div class="result-macro-label">CALORÍAS</div>
+          <div class="result-macro-value" style="color:var(--green)">${meal.calories}<span class="result-macro-unit">kcal</span></div>
+        </div>
+        <div class="result-macro">
+          <div class="result-macro-label">PROTEÍNA</div>
+          <div class="result-macro-value" style="color:var(--green)">${meal.protein}<span class="result-macro-unit">g</span></div>
+        </div>
+        <div class="result-macro">
+          <div class="result-macro-label">CARBS</div>
+          <div class="result-macro-value" style="color:var(--cyan)">${meal.carbs}<span class="result-macro-unit">g</span></div>
+        </div>
+        <div class="result-macro">
+          <div class="result-macro-label">GRASA</div>
+          <div class="result-macro-value" style="color:var(--orange)">${meal.fat}<span class="result-macro-unit">g</span></div>
+        </div>
+      </div>
+      ${meal.notes ? `<div class="result-note">${meal.notes}</div>` : ''}
+      <div class="result-actions">
+        <button class="btn-confirm" onclick="confirmMeal()">✓ Confirmar</button>
+        <button class="btn-discard" onclick="discardMeal()">Descartar</button>
+      </div>
+    </div>
+  `;
+}
+
+function confirmMeal() {
+  if (!state.pendingMeal) return;
+  state.todayMeals.push(state.pendingMeal);
+  LS.set('byol_today_' + today(), state.todayMeals);
+  state.pendingMeal = null;
+  document.getElementById('result-area').innerHTML = '';
+  document.getElementById('manual-card').style.display = 'block';
+  showToast('✓ Comida registrada');
+  showScreen('home');
+}
+window.confirmMeal = confirmMeal;
+
+function discardMeal() {
+  state.pendingMeal = null;
+  document.getElementById('result-area').innerHTML = '';
+  document.getElementById('manual-card').style.display = 'block';
+}
+window.discardMeal = discardMeal;
+
+function resetPhotoZone() {
+  const zone = document.getElementById('photo-zone');
+  zone.classList.remove('analyzing');
+  document.getElementById('photo-title').textContent = 'Toma una foto';
+  document.getElementById('photo-sub').style.display = 'block';
+  document.getElementById('analyzing-text').style.display = 'none';
+}
+
+function addManual() {
+  const name = document.getElementById('manual-name').value.trim();
+  const cal = +document.getElementById('manual-cal').value || 0;
+  if (!name || !cal) { showToast('Nombre y calorías son requeridos', 'err'); return; }
+  const meal = {
+    meal: name, calories: cal,
+    protein: +document.getElementById('manual-prot').value || 0,
+    carbs: +document.getElementById('manual-carbs').value || 0,
+    fat: +document.getElementById('manual-fat').value || 0,
+    id: Date.now(),
+    time: new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }),
+  };
+  state.todayMeals.push(meal);
+  LS.set('byol_today_' + today(), state.todayMeals);
+  ['manual-name','manual-cal','manual-prot','manual-carbs','manual-fat'].forEach(id => document.getElementById(id).value = '');
+  showToast('✓ Añadido manualmente');
+  showScreen('home');
+}
+
+// ── HISTORY ───────────────────────────────────────────────────────────────────
+function renderHistory() {
+  const entries = state.entries;
+  const last7 = entries.slice(-7).reverse();
+  const g = state.goals;
+  const streak = calcStreak();
+
+  // ── Weight journey ──
+  const weightEntries = entries.filter(e => e.weight && +e.weight > 0);
+  const goalWeight = state.goals._goalWeight || 81.5;
+  if (weightEntries.length >= 2) {
+    const firstW = +weightEntries[0].weight;
+    const lastW = +weightEntries[weightEntries.length - 1].weight;
+    const totalRange = firstW - goalWeight;
+    const lost = firstW - lastW;
+    const pct = Math.max(0, Math.min(100, Math.round((lost / totalRange) * 100)));
+    const remaining = Math.max(0, lastW - goalWeight).toFixed(1);
+
+    document.getElementById('weight-journey-area').innerHTML = `
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <div style="text-align:center">
+          <div style="font-family:var(--font-mono);font-size:9px;color:var(--muted);letter-spacing:1px;margin-bottom:3px">INICIO</div>
+          <div style="font-family:var(--font-display);font-size:18px;font-weight:700;color:#aaa">${firstW}<span style="font-size:11px;color:var(--muted)">kg</span></div>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
+          <div style="width:100%;height:6px;background:var(--border);border-radius:3px;overflow:hidden">
+            <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,var(--green),var(--cyan));border-radius:3px;transition:width 0.8s ease"></div>
+          </div>
+          <div style="font-family:var(--font-mono);font-size:10px;color:var(--green);font-weight:700">${pct}% logrado</div>
+        </div>
+        <div style="text-align:center">
+          <div style="font-family:var(--font-mono);font-size:9px;color:var(--muted);letter-spacing:1px;margin-bottom:3px">META</div>
+          <div style="font-family:var(--font-display);font-size:18px;font-weight:700;color:var(--green)">${goalWeight}<span style="font-size:11px;color:var(--muted)">kg</span></div>
+        </div>
+      </div>`;
+
+    // Distance to goal card
+    document.getElementById('goal-distance-card').style.display = 'block';
+    document.getElementById('kg-remaining').textContent = remaining + ' kg';
+    document.getElementById('kg-lost-label').textContent = `Llevas ${lost.toFixed(1)} kg bajados`;
+
+    // Projection
+    const weeksData = weightEntries.slice(-4);
+    let ratePerWeek = 0;
+    if (weeksData.length >= 2) {
+      const daysDiff = (new Date(weeksData[weeksData.length-1].date) - new Date(weeksData[0].date)) / 86400000 || 1;
+      const weightDiff = +weeksData[0].weight - +weeksData[weeksData.length-1].weight;
+      ratePerWeek = (weightDiff / daysDiff) * 7;
+    }
+    if (ratePerWeek > 0) {
+      const weeksLeft = Math.round(+remaining / ratePerWeek);
+      const projDate = new Date();
+      projDate.setDate(projDate.getDate() + weeksLeft * 7);
+      const months = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+      document.getElementById('trend-badge').textContent = `-${ratePerWeek.toFixed(1)} kg/sem 📉`;
+      document.getElementById('proj-rate').textContent = `-${ratePerWeek.toFixed(1)} kg/semana`;
+      document.getElementById('proj-weeks').textContent = `~${weeksLeft} semanas`;
+      document.getElementById('proj-date').textContent = `${months[projDate.getMonth()]} ${projDate.getFullYear()}`;
+    } else {
+      document.getElementById('trend-badge').textContent = 'Sin tendencia aún';
+      document.getElementById('proj-rate').textContent = '—';
+      document.getElementById('proj-weeks').textContent = '—';
+      document.getElementById('proj-date').textContent = '—';
+    }
+  }
+
+  // ── Calorie chart ──
+  const chartEl = document.getElementById('chart-bars');
+  if (last7.length) {
+    const maxCal = Math.max(...last7.map(e => e.calories), g.calories);
+    chartEl.innerHTML = last7.map(e => {
+      const h = Math.max(4, Math.round((e.calories / maxCal) * 80));
+      const over = e.calories > g.calories;
+      return `<div class="chart-bar-wrap">
+        <div class="chart-bar" style="height:${h}px;background:${over ? 'var(--red)' : 'var(--green)'};opacity:0.85"></div>
+        <div class="chart-date">${e.date.slice(5)}</div>
+      </div>`;
+    }).join('');
+  }
+
+  // ── Averages ──
+  if (last7.length) {
+    document.getElementById('avg-cal').textContent = Math.round(last7.reduce((a,e) => a+e.calories,0)/last7.length);
+    document.getElementById('avg-prot').textContent = Math.round(last7.reduce((a,e) => a+e.protein,0)/last7.length) + 'g';
+    const weights = last7.filter(e => e.weight).map(e => +e.weight);
+    document.getElementById('avg-weight').textContent = weights.length ? (weights.reduce((a,b)=>a+b,0)/weights.length).toFixed(1) : '—';
+  }
+
+  // ── Consistency grid ──
+  const gridEl = document.getElementById('consistency-grid');
+  const last30 = entries.slice(-30);
+  gridEl.innerHTML = last30.map(e => {
+    const protOk = e.protein >= g.protein * 0.9;
+    const calOk = e.calories <= g.calories * 1.1;
+    const color = protOk && calOk ? 'var(--green)' : calOk ? 'var(--cyan)' : 'var(--orange)';
+    const opacity = protOk && calOk ? '0.9' : '0.6';
+    return `<div title="${e.date}" style="width:14px;height:14px;border-radius:3px;background:${color};opacity:${opacity}"></div>`;
+  }).join('') + (last30.length < 30 ? Array(30 - last30.length).fill('<div style="width:14px;height:14px;border-radius:3px;background:var(--border)"></div>').join('') : '');
+  document.getElementById('consistency-label').textContent = `${last30.length} de 30 días registrados · ${Math.round(last30.length/30*100)}%`;
+  document.getElementById('best-streak-label').textContent = `Mejor racha: ${streak} días consecutivos 🔥`;
+
+  // ── Protein days this week ──
+  const days = ['L','M','M','J','V','S','D'];
+  const now = new Date();
+  const dayOfWeek = (now.getDay() + 6) % 7;
+  const weekDays = Array.from({length: 7}, (_, i) => {
+    const d = new Date(now); d.setDate(d.getDate() - dayOfWeek + i);
+    return d.toISOString().split('T')[0];
+  });
+  const proteinEl = document.getElementById('protein-days');
+  proteinEl.innerHTML = weekDays.map((date, i) => {
+    const entry = entries.find(e => e.date === date);
+    const isToday = date === today();
+    const done = entry && entry.protein >= g.protein * 0.9;
+    const future = date > today();
+    let bg, color, border;
+    if (future) { bg = 'var(--border)'; color = '#333355'; border = 'none'; }
+    else if (done) { bg = 'rgba(0,212,255,0.2)'; color = 'var(--cyan)'; border = '1px solid var(--cyan)'; }
+    else if (isToday) { bg = 'rgba(0,212,255,0.1)'; color = 'var(--cyan)'; border = '1px dashed var(--cyan)'; }
+    else { bg = 'var(--surface2)'; color = 'var(--muted)'; border = 'none'; }
+    return `<div style="flex:1;height:28px;border-radius:6px;background:${bg};border:${border};display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:10px;font-weight:700;color:${color}">${days[i]}</div>`;
+  }).join('');
+  const protDays = weekDays.filter(date => {
+    const e = entries.find(en => en.date === date);
+    return e && e.protein >= g.protein * 0.9;
+  }).length;
+  const pastDays = weekDays.filter(d => d <= today()).length;
+  document.getElementById('protein-week-label').textContent = `${protDays}/${pastDays} días con meta de proteína ✓`;
+
+  // ── Next level ──
+  const level = calcLevel(streak, entries);
+  const levels = [
+    { name: '🔴 Muestra en proceso', pts: 0 },
+    { name: '🟡 Datos estables', pts: 6 },
+    { name: '🟢 Protocolo activo', pts: 13 },
+    { name: '🔵 Optimización avanzada', pts: 20 },
+    { name: '⚡ BYOL Master', pts: 27 },
+  ];
+  const currentIdx = levels.findIndex(l => l.name === level.name);
+  const nextLevel = levels[currentIdx + 1];
+  if (nextLevel) {
+    document.getElementById('next-level-name').textContent = nextLevel.name;
+    const ptsNeeded = nextLevel.pts - level.pts;
+    document.getElementById('next-level-pts').textContent = `Necesitas ${Math.max(0, nextLevel.pts - level.pts)} pts más`;
+    const pct = Math.round((level.pts / nextLevel.pts) * 100);
+    document.getElementById('next-level-bar').style.width = pct + '%';
+    document.getElementById('next-level-frac').textContent = `${level.pts}/${nextLevel.pts} pts`;
+  } else {
+    document.getElementById('next-level-name').textContent = '⚡ ¡Nivel máximo alcanzado!';
+    document.getElementById('next-level-pts').textContent = 'Eres un BYOL Master';
+    document.getElementById('next-level-bar').style.width = '100%';
+    document.getElementById('next-level-frac').textContent = `${level.pts} pts`;
+  }
+
+  // Entries list
+  document.getElementById('entries-count').textContent = entries.length;
+  const entriesEl = document.getElementById('entries-list');
+  if (!entries.length) {
+    entriesEl.innerHTML = '<div style="color:var(--muted);font-size:12px;font-family:var(--font-mono);text-align:center;padding:16px 0">Cierra tu primer día para ver el historial</div>';
+  } else {
+    entriesEl.innerHTML = [...entries].reverse().slice(0, 20).map(e => `
+      <div class="history-entry">
+        <div>
+          <div class="history-date">${e.date}</div>
+          <div class="history-meta">P:${e.protein}g C:${e.carbs}g G:${e.fat}g · ${e.meals}🍽</div>
+        </div>
+        <div style="text-align:right">
+          <div class="history-cal" style="color:${e.calories > state.goals.calories ? 'var(--red)' : 'var(--green)'}">${e.calories} kcal</div>
+          ${e.weight ? `<div style="color:var(--muted);font-size:11px;font-family:var(--font-mono)">${e.weight}kg</div>` : ''}
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // Report button
+  document.getElementById('btn-report').onclick = generateReport;
+}
+
+async function generateReport() {
+  const btn = document.getElementById('btn-report');
+  btn.textContent = '⏳ Generando...';
+  btn.disabled = true;
+  try {
+    const res = await fetch('/api/report', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ entries: state.entries.slice(-14), goals: state.goals }),
+    });
+    if (!res.ok) throw new Error('Error servidor');
+    const data = await res.json();
+    const box = document.getElementById('report-box');
+    box.style.display = 'block';
+    box.textContent = data.report;
+  } catch (err) { showToast('Error generando reporte', 'err'); }
+  btn.textContent = '⚡ Generar Reporte Semanal';
+  btn.disabled = false;
+}
+
+// ── SETTINGS ──────────────────────────────────────────────────────────────────
+function renderSettings() {
+  document.getElementById('settings-username').textContent = state.user?.name || '—';
+  document.getElementById('goal-cal').value = state.goals.calories;
+  document.getElementById('goal-prot').value = state.goals.protein;
+  document.getElementById('goal-carbs').value = state.goals.carbs;
+  document.getElementById('goal-fat').value = state.goals.fat;
+  document.getElementById('share-code').textContent = state.user?.code || 'BYOL-2024';
+
+  document.getElementById('btn-save-goals').onclick = () => {
+    state.goals = {
+      calories: +document.getElementById('goal-cal').value || 1800,
+      protein: +document.getElementById('goal-prot').value || 150,
+      carbs: +document.getElementById('goal-carbs').value || 150,
+      fat: +document.getElementById('goal-fat').value || 60,
+    };
+    LS.set('byol_goals', state.goals);
+    showToast('✓ Metas guardadas');
+  };
+
+  document.getElementById('btn-logout').onclick = () => {
+    state.user = null;
+    LS.set('byol_user', null);
+    document.getElementById('bottom-nav').style.display = 'none';
+    document.getElementById('screen-settings').classList.remove('active');
+    document.getElementById('screen-login').style.display = 'flex';
+    document.getElementById('screen-login').classList.add('active');
+  };
+
+  document.getElementById('btn-copy-link').onclick = () => {
+    const url = `${window.location.origin}?code=${state.user?.code || 'BYOL-2024'}`;
+    navigator.clipboard.writeText(url).then(() => showToast('✓ Enlace copiado')).catch(() => showToast(url));
+  };
+}
+
+// ── BOOT ──────────────────────────────────────────────────────────────────────
+if (state.user) initApp();
+else {
+  document.getElementById('screen-login').classList.add('active');
+  // Pre-fill code from URL param
+  const urlCode = new URLSearchParams(window.location.search).get('code');
+  if (urlCode) document.getElementById('input-code').value = urlCode;
+}
+</script>
+</body>
+</html>
